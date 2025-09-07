@@ -122,19 +122,6 @@ const MemoizedColumn = memo(({
             )}
         </Draggable>
     );
-}, (prevProps, nextProps) => {
-    return (
-        prevProps.column.id === nextProps.column.id &&
-        prevProps.applications.length === nextProps.applications.length &&
-        prevProps.hasMore === nextProps.hasMore &&
-        prevProps.loading === nextProps.loading &&
-        prevProps.index === nextProps.index &&
-        prevProps.admin === nextProps.admin &&
-        prevProps.jobData === nextProps.jobData &&
-        prevProps.searchValue === nextProps.searchValue &&
-        prevProps.totalApplications === nextProps.totalApplications &&
-        JSON.stringify(prevProps.column) === JSON.stringify(nextProps.column)
-    );
 });
 
 export default MemoizedColumn;

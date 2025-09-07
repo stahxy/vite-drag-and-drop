@@ -1,10 +1,51 @@
-import React, { useMemo, useCallback, useState } from "react";
+import React, { useCallback, useState } from "react";
 import { DragDropContext, Droppable } from "@hello-pangea/dnd";
 import "./Board.css"
 import { notification } from "antd";
 import { useBoard } from "../../hooks";
 import SimpleSpinner from "./SimpleSpinner";
 import MemoizedColumn from "./MemoizedColumn";
+
+// Stable functions moved to module level
+const filterApplicationsByName = (applications, searchTerm) => {
+    if (!searchTerm || searchTerm.trim() === '') {
+        return applications;
+    }
+    
+    const normalizedSearchTerm = searchTerm.toLowerCase().trim();
+    
+    return applications.filter(application => {
+        const firstName = application.card?.name?.toLowerCase() || '';
+        const lastName = application.card?.last_name?.toLowerCase() || '';
+        const fullName = `${firstName} ${lastName}`.trim();
+        
+        return fullName.includes(normalizedSearchTerm) || 
+               firstName.includes(normalizedSearchTerm) || 
+               lastName.includes(normalizedSearchTerm);
+    });
+};
+
+const searchWorkerByFullname = (fullName, columnId) => {
+    const trimmedName = fullName.trim();
+    const nameParts = trimmedName.split(/\s+/);
+    
+    if (nameParts.length < 2) {
+        notification.error({
+            message: "Search Error",
+            description: "You must enter first and last name. Example: John Smith",
+            duration: 4
+        });
+        return;
+    }
+    
+    const firstName = nameParts[0].toLowerCase();
+    // Concatenate all words after the first name as last name
+    const lastName = nameParts.slice(1).join(' ').toLowerCase();
+    
+    console.log(`Searching in column ${columnId}:`);
+    console.log(`- First Name: ${firstName}`);
+    console.log(`- Last Name: ${lastName}`);
+};
 
 export function Board({ jobId, admin, jobData }) {
     console.log('jobid in board', jobId);
@@ -20,48 +61,6 @@ export function Board({ jobId, admin, jobData }) {
     // State to handle searches by column
     const [searchValues, setSearchValues] = useState({});
 
-    // Function to filter applications by full name
-    const filterApplicationsByName = useCallback((applications, searchTerm) => {
-        if (!searchTerm || searchTerm.trim() === '') {
-            return applications;
-        }
-        
-        const normalizedSearchTerm = searchTerm.toLowerCase().trim();
-        
-        return applications.filter(application => {
-            const firstName = application.card?.name?.toLowerCase() || '';
-            const lastName = application.card?.last_name?.toLowerCase() || '';
-            const fullName = `${firstName} ${lastName}`.trim();
-            
-            return fullName.includes(normalizedSearchTerm) || 
-                   firstName.includes(normalizedSearchTerm) || 
-                   lastName.includes(normalizedSearchTerm);
-        });
-    }, []);
-
-    // Function to search worker by full name
-    const searchWorkerByFullname = useCallback((fullName, columnId) => {
-        const trimmedName = fullName.trim();
-        const nameParts = trimmedName.split(/\s+/);
-        
-        if (nameParts.length < 2) {
-            notification.error({
-                message: "Search Error",
-                description: "You must enter first and last name. Example: John Smith",
-                duration: 4
-            });
-            return;
-        }
-        
-        const firstName = nameParts[0].toLowerCase();
-        // Concatenate all words after the first name as last name
-        const lastName = nameParts.slice(1).join(' ').toLowerCase();
-        
-        console.log(`Searching in column ${columnId}:`);
-        console.log(`- First Name: ${firstName}`);
-        console.log(`- Last Name: ${lastName}`);
-    }, []);
-
     // Function to handle input search change
     const handleSearchChange = useCallback((columnId, value) => {
         setSearchValues(prev => ({
@@ -76,35 +75,18 @@ export function Board({ jobId, admin, jobData }) {
             const searchValue = searchValues[columnId] || '';
             searchWorkerByFullname(searchValue, columnId);
         }
-    }, [searchValues, searchWorkerByFullname]);
+    }, [searchValues]);
 
-    // Get filtered applications for each column
-    const filteredColumnsData = useMemo(() => {
-        const filtered = {};
-        
-        columns.forEach(column => {
-            const originalApplications = columnsData[column.id]?.applications || [];
-            const searchTerm = searchValues[column.id] || '';
-            const filteredApplications = filterApplicationsByName(originalApplications, searchTerm);
-            
-            filtered[column.id] = {
-                ...columnsData[column.id],
-                applications: filteredApplications
-            };
-        });
-        
-        return filtered;
-    }, [columns, columnsData, searchValues, filterApplicationsByName]);
+    // Function to get filtered applications - calculated during render
+    const getFilteredApplications = (columnId) => {
+        const originalApplications = columnsData[columnId]?.applications || [];
+        const searchTerm = searchValues[columnId] || '';
+        return filterApplicationsByName(originalApplications, searchTerm);
+    };
 
-    const title = useMemo(() => 
-        jobData?.job_company_name ? `Applicants for ${jobData.job_company_name}` : "", 
-        [jobData?.job_company_name]
-    );
-
-    const subtitle = useMemo(() => 
-        `${jobData?.job_name} - ${jobData?.job_branch_name}`, 
-        [jobData?.job_name, jobData?.job_branch_name]
-    );
+    // Calculate titles directly in render
+    const title = jobData?.job_company_name ? `Applicants for ${jobData.job_company_name}` : "";
+    const subtitle = `${jobData?.job_name} - ${jobData?.job_branch_name}`;
 
     return (
         <div className="board-container">
@@ -138,10 +120,10 @@ export function Board({ jobId, admin, jobData }) {
                                 <MemoizedColumn
                                     key={column.id}
                                     column={column}
-                                    applications={filteredColumnsData[column.id]?.applications || []}
+                                    applications={getFilteredApplications(column.id)}
                                     onLoadMore={loadMoreApplications}
-                                    hasMore={filteredColumnsData[column.id]?.hasMore}
-                                    loading={filteredColumnsData[column.id]?.loading}
+                                    hasMore={columnsData[column.id]?.hasMore}
+                                    loading={columnsData[column.id]?.loading}
                                     jobData={jobData}
                                     admin={admin}
                                     fetchData={fetchData}

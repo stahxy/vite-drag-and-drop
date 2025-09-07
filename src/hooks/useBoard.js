@@ -5,6 +5,13 @@ import { getApplications } from "../api/applications";
 import { notification } from "antd";
 // import { amplifyPut } from "helpers/amplifyPut";
 
+// Helper function to sort applications by created_on (newest first)
+const sortApplicationsByDate = (applications) => {
+    return [...applications].sort((a, b) => {
+        return parseFloat(b.created_on) - parseFloat(a.created_on);
+    });
+};
+
 export function useBoard({ jobId, admin = false }) {
     console.log('jobid in useBoard', jobId);
     const [boardState, setBoardState] = useState({
@@ -204,8 +211,11 @@ export function useBoard({ jobId, admin = false }) {
             const items = body.items || [];
             const pagination = body.pagination || {};
             
+            // Sort applications by created_on (newest first)
+            const sortedApplications = sortApplicationsByDate(items);
+            
             return {
-                applications: items,
+                applications: sortedApplications,
                 lastEvaluatedKey: pagination.last_evaluated_key || null,
                 hasMore: pagination.has_more || false,
                 total: pagination.total_items || 0
@@ -321,15 +331,16 @@ export function useBoard({ jobId, admin = false }) {
                 columnData.lastEvaluatedKey
             );
 
-            // Update state with new applications
-            const newApplications = [...boardState.columnsData[columnId].applications, ...result.applications];
+            // Combine existing and new applications, then sort by date
+            const allApplications = [...boardState.columnsData[columnId].applications, ...result.applications];
+            const sortedAllApplications = sortApplicationsByDate(allApplications);
             
             updateBoardState({
                 columnsData: {
                     ...boardState.columnsData,
                     [columnId]: {
                         ...boardState.columnsData[columnId],
-                        applications: newApplications,
+                        applications: sortedAllApplications,
                         lastEvaluatedKey: result.lastEvaluatedKey,
                         hasMore: result.hasMore,
                         page: nextPage, 
