@@ -1,5 +1,7 @@
 # Job Applications Board
 
+<img width="1859" height="811" alt="image" src="https://github.com/user-attachments/assets/6e88e0ba-7ed8-4978-9ef3-b7a0b7f35778" />
+
 Drag and drop job applications management board built with React and Vite.
 
 ## Features
